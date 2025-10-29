@@ -17,7 +17,7 @@ pip3 install -r requirements.txt
 
 ## Setup OpenFGA Server locally
 
-TODO
+See [Setup OpenFGA with Docker](https://openfga.dev/docs/getting-started/setup-openfga/docker).
 
 ## Run the User onboarding workflow
 

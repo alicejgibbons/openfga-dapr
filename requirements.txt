@@ -1,6 +1,6 @@
 fastapi==0.116.1
 uvicorn[standard]==0.32.0
-openfga-sdk==0.9.5
+git+https://github.com/openfga/python-sdk.git@main
 pip-system-certs==5.2
 pydantic==2.10.0
 pydantic-settings==2.6.0

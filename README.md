@@ -7,7 +7,7 @@ This project demonstrates how to implement **Role-Based Access Control (RBAC)** 
 This demo implements a simple organizational RBAC pattern with:
 
 - **Organizations**: Groups that contain users with specific roles
-- **Users**: Individual actors with roles in organizations  
+- **Users**: Individual actors with roles in organizations
 - **Resources**: Assets owned by organizations
 - **Roles**: `admin` and `member` with different permission levels
 
@@ -20,7 +20,7 @@ type organization
   relations
     define admin: [user]
     define member: [user]
-    
+
     define can_add_member: admin
     define can_delete_member: admin
     define can_view_member: admin or member
@@ -29,7 +29,7 @@ type organization
 type resource
   relations
     define organization: [organization]
-    
+
     define can_delete_resource: admin from organization
     define can_view_resource: admin from organization or member from organization
 ```
@@ -73,7 +73,7 @@ fastapi-openfga-project/
 │   ├── services/
 │   │   └── authorization_service.py # OpenFGA integration
 │   ├── utils/
-│   │   └── auth0_fga_client.py    # OpenFGA client wrapper
+│   │   └── openfga_client.py    # OpenFGA client wrapper
 │   └── openfga/
 │       └── model.fga.yaml       # OpenFGA model definition
 ├── app.db                       # SQLite database file (auto-created)
@@ -93,8 +93,6 @@ fastapi-openfga-project/
 ## Requirements
 
 - Python 3.9+
-- Auth0 Account
-- Auth0 FGA Account
 
 ## Setup Instructions
 
@@ -113,9 +111,9 @@ fastapi-openfga-project/
    ```bash
    uvicorn app.main:app --reload
    ```
-   
+
    The application will:
-   - Connect to Auth0 FGA
+   - Connect to OpenFGA
    - Initialize SQLite database tables automatically
    - Start the FastAPI server on http://127.0.0.1:8000
 

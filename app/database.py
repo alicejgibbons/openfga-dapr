@@ -12,33 +12,36 @@ engine = create_async_engine(
 
 # Create async session factory
 AsyncSessionLocal = async_sessionmaker(
-    engine,
-    class_=AsyncSession,
-    expire_on_commit=False
+    engine, class_=AsyncSession, expire_on_commit=False
 )
+
 
 class Base(DeclarativeBase):
     """Base class for all database models."""
+
     pass
+
 
 # SQLAlchemy Models
 class OrganizationDB(Base):
     __tablename__ = "organizations"
-    
+
     id = Column(String, primary_key=True, index=True)
     name = Column(String, nullable=False, index=True)
     description = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+
 class ResourceDB(Base):
     __tablename__ = "resources"
-    
+
     id = Column(String, primary_key=True, index=True)
     name = Column(String, nullable=False, index=True)
     description = Column(Text, nullable=True)
     resource_type = Column(String, nullable=False)
     organization_id = Column(String, nullable=False, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+
 
 # Database dependency
 async def get_db():
@@ -48,6 +51,7 @@ async def get_db():
             yield session
         finally:
             await session.close()
+
 
 # Database initialization
 async def init_db():

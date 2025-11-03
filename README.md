@@ -1,6 +1,6 @@
 # Dapr & OpenFGA: Employee Onboarding Workflow
 
-This directory contains an example of using [Dapr Workflow](https://docs.dapr.io/developing-applications/building-blocks/workflow/) along with [OpenFGA](https://openfga.dev/) to create an employee onboarding workflow that simulates the process needed to onboard a user to an enterprise Auth server and give them the associated permissions. 
+This directory contains an example of using [Dapr Workflow](https://docs.dapr.io/developing-applications/building-blocks/workflow/) along with [OpenFGA](https://openfga.dev/) to create an employee onboarding workflow that simulates the process needed to onboard a user to an enterprise Auth server and give them the associated permissions.
 
 ## Prerequisites
 

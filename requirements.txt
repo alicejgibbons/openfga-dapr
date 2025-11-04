@@ -2,7 +2,7 @@ dapr>=1.16.0
 dapr-ext-workflow>=1.16.0
 fastapi==0.116.1
 uvicorn[standard]==0.32.0
-git+https://github.com/openfga/python-sdk.git@main
+openfga_sdk==0.9.8
 pip-system-certs==5.2
 pydantic==2.10.0
 pydantic-settings==2.6.0

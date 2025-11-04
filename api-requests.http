@@ -39,11 +39,10 @@ Content-Type: application/json
   "name": "Acme Corporation",
   "description": "A demo organization"
 }
-
-@organizationId = {{createOrg.response.body.$.id}}
 ###
 
 ### Get specific organization by ID
+@organizationId = {{createOrg.response.body.$.id}}
 
 GET {{baseUrl}}/organizations/{{organizationId}}?user_id={{alice}}
 

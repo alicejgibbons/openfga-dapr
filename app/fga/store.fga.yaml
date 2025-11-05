@@ -1,0 +1,82 @@
+model: |
+  model 
+    schema 1.1
+
+    type user
+
+    type organization
+      relations
+        define admin: [user]
+        define member: [user]
+
+        define can_add_member: admin
+        define can_delete_member: admin
+        define can_view_member: admin or member
+        define can_add_resource: admin or member
+
+    type resource
+      relations
+        define organization: [organization]
+
+        # map resource permissions to organization roles
+        define can_delete_resource: admin from organization
+        define can_view_resource: admin from organization or member from organization
+
+tuples:
+  # Example organization setup
+  - user: user:alice
+    relation: admin
+    object: organization:acme
+
+  - user: user:bob
+    relation: member
+    object: organization:acme
+
+  - user: user:charlie
+    relation: member
+    object: organization:acme
+
+  # Example resources belonging to the organization
+  - user: organization:acme
+    relation: organization
+    object: resource:database-server
+
+  - user: organization:acme
+    relation: organization
+    object: resource:api-gateway
+
+tests:
+  - check:
+      - user: user:alice
+        object: organization:acme
+        assertions:
+          can_add_member: true
+          can_delete_member: true
+          can_view_member: true
+          can_add_resource: true
+
+      - user: user:bob
+        object: organization:acme
+        assertions:
+          can_add_member: false
+          can_delete_member: false
+          can_view_member: true
+          can_add_resource: true
+
+      - user: user:alice
+        object: resource:database-server
+        assertions:
+          can_delete_resource: true
+          can_view_resource: true
+
+      - user: user:bob
+        object: resource:database-server
+        assertions:
+          can_delete_resource: false
+          can_view_resource: true
+
+      - user: user:charlie
+        object: resource:api-gateway
+        assertions:
+          can_delete_resource: false
+          can_view_resource: true

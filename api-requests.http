@@ -1,0 +1,219 @@
+### Variables
+@baseUrl = http://localhost:8000
+@alice = alice
+@bob = bob
+@charlie = charlie
+
+###############################################################################
+# General Endpoints
+###############################################################################
+
+### Root endpoint
+GET {{baseUrl}}/
+
+###
+
+### Health check
+GET {{baseUrl}}/health
+
+###
+
+### RBAC Information
+GET {{baseUrl}}/rbac-info
+
+###############################################################################
+# Organizations
+###############################################################################
+
+### List all organizations (as alice)
+GET {{baseUrl}}/organizations/?user_id={{alice}}
+
+###
+
+### Create an organization (alice becomes admin)
+# @name createOrg
+POST {{baseUrl}}/organizations/?user_id={{alice}}
+Content-Type: application/json
+
+{
+  "name": "Acme Corporation",
+  "description": "A demo organization"
+}
+###
+
+### Get specific organization by ID
+@organizationId = {{createOrg.response.body.$.id}}
+
+GET {{baseUrl}}/organizations/{{organizationId}}?user_id={{alice}}
+
+###
+
+### Add bob as member to organization (requires admin)
+POST {{baseUrl}}/organizations/{{organizationId}}/members?user_id={{alice}}
+Content-Type: application/json
+
+{
+  "user_id": "{{bob}}",
+  "organization_id": "{{organizationId}}",
+  "role": "member"
+}
+
+###
+
+### Add charlie as admin to organization (requires admin)
+POST {{baseUrl}}/organizations/{{organizationId}}/members?user_id={{alice}}
+Content-Type: application/json
+
+{
+  "user_id": "{{charlie}}",
+  "organization_id": "{{organizationId}}",
+  "role": "admin"
+}
+
+###
+
+### Try to add member without admin permissions (should fail)
+POST {{baseUrl}}/organizations/{{organizationId}}/members?user_id={{bob}}
+Content-Type: application/json
+
+{
+  "user_id": "user-dave",
+  "organization_id": "{{organizationId}}",
+  "role": "member"
+}
+
+###
+
+### Remove member from organization (requires admin)
+DELETE {{baseUrl}}/organizations/{{organizationId}}/members/{{bob}}?role=member&user_id={{alice}}
+
+###
+
+### Delete organization (requires admin)
+DELETE {{baseUrl}}/organizations/{{organizationId}}?user_id={{alice}}
+
+###############################################################################
+# Resources
+###############################################################################
+
+### List all resources (as alice)
+GET {{baseUrl}}/resources/?user_id={{alice}}
+
+###
+
+### List resources filtered by organization
+GET {{baseUrl}}/resources/?user_id={{alice}}&organization_id={{organizationId}}
+
+###
+
+### Create a resource in organization (admin or member can do this)
+# @name createResource
+POST {{baseUrl}}/resources/?user_id={{alice}}
+Content-Type: application/json
+
+{
+  "name": "Database Server",
+  "description": "Production database server",
+  "resource_type": "server",
+  "organization_id": "{{organizationId}}"
+}
+###
+
+@resourceId = {{createResource.response.body.$.id}}
+
+### Create another resource (as member)
+# @name createResource2
+POST {{baseUrl}}/resources/?user_id={{bob}}
+Content-Type: application/json
+
+{
+  "name": "API Gateway",
+  "description": "Main API gateway",
+  "resource_type": "api",
+  "organization_id": "{{organizationId}}"
+}
+
+###
+
+### Try to create resource without permission (should fail)
+POST {{baseUrl}}/resources/?user_id=user-unauthorized
+Content-Type: application/json
+
+{
+  "name": "Unauthorized Resource",
+  "description": "This should fail",
+  "resource_type": "server",
+  "organization_id": "{{organizationId}}"
+}
+
+###
+
+### Get specific resource by ID
+GET {{baseUrl}}/resources/{{resourceId}}?user_id={{alice}}
+
+###
+
+### Check permissions on a resource
+GET {{baseUrl}}/resources/{{resourceId}}/permissions?user_id={{alice}}
+
+###
+
+### Check permissions for a member user
+GET {{baseUrl}}/resources/{{resourceId}}/permissions?user_id={{bob}}
+
+###
+
+### Check permissions for unauthorized user
+GET {{baseUrl}}/resources/{{resourceId}}/permissions?user_id=user-unauthorized
+
+###
+
+### Delete resource (requires admin)
+DELETE {{baseUrl}}/resources/{{resourceId}}?user_id={{alice}}
+
+###
+
+### Try to delete resource as member (should fail)
+DELETE {{baseUrl}}/resources/{{resourceId}}?user_id={{bob}}
+
+### OpenFGA Read: Organizations where alice is admin
+POST {{$dotenv OPENFGA_API_URL}}/stores/{{$dotenv OPENFGA_STORE_ID}}/read
+Content-Type: application/json
+
+{
+  "tuple_key": {
+    "user": "user:{{alice}}",
+    "relation": "admin",
+    "object": "organization:"
+  }
+}
+
+### OpenFGA ListObjects: Admins for an organization
+POST {{$dotenv OPENFGA_API_URL}}/stores/{{$dotenv OPENFGA_STORE_ID}}/list-objects
+Content-Type: application/json
+
+{
+  "type": "organization",
+  "relation": "admin",
+  "user": "organization:{{organizationId}}"
+}
+
+### OpenFGA ListObjects: Members for an organization
+POST {{$dotenv OPENFGA_API_URL}}/stores/{{$dotenv OPENFGA_STORE_ID}}/list-objects
+Content-Type: application/json
+
+{
+  "type": "organization",
+  "relation": "member",
+  "user": "organization:{{organizationId}}"
+}
+
+### OpenFGA ListObjects: Resources for an organization
+POST {{$dotenv OPENFGA_API_URL}}/stores/{{$dotenv OPENFGA_STORE_ID}}/list-objects
+Content-Type: application/json
+
+{
+  "type": "resource",
+  "relation": "organization",
+  "user": "organization:{{organizationId}}"
+}

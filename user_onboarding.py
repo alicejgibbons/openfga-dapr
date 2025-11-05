@@ -11,6 +11,7 @@
 # limitations under the License.
 
 from datetime import datetime, timedelta
+from time import sleep
 
 from dapr.clients import DaprClient
 from dapr.conf import settings
@@ -100,6 +101,7 @@ def grant_permissions(ctx, activity_input):
     user_id = activity_input['user_id']
     print(f'Granting {role} permissions for user id {user_id}')
     # Grant permissions in the openfga server
+    # PUT OPEN FGA SERVICE CALL HERE
     return f'Permissions granted for user {user_id} with role {role}'
 
 

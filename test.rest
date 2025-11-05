@@ -1,12 +1,30 @@
 # Requires the REST Client Extension in VSCode/Cursor: humao.rest-client
 @apphost=http://localhost:5255
+@daprHost=http://localhost:3500
+@user_id=1
 
-### Start the task_chaining workflow
+### Set user permissions
+POST {{ daprHost }}/v1.0/state/statestore
+Content-Type: application/json
+
+[{
+  "key": "{{ user_id }}",
+  "value": "admin"
+}]
+
+### Start the user onboarding workflow
 # @name startWorkflowRequest
-POST {{ apphost }}/start
-
+POST {{daprHost}}/v1.0/workflows/dapr/user_onboarding_workflow/start
+Content-Type: application/json
 
 @instanceId={{startWorkflowRequest.response.body.instance_id}}
-@daprHost=http://localhost:57742
 ### Get the workflow status
 GET {{ daprHost }}/v1.0/workflows/dapr/{{ instanceId }}
+
+### Grant permissions approved event
+POST {{daprHost}}/v1.0/workflows/dapr/{{ instanceId }}/raiseEvent/permissions_approved
+Content-Type: application/json
+
+#### Grant permissions denied event
+POST {{daprHost}}/v1.0/workflows/dapr/{{ instanceId }}/raiseEvent/permissions_denied
+Content-Type: application/json

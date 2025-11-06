@@ -19,7 +19,7 @@ async def lifespan(app: FastAPI):
 
     # Check OpenFGA connection
     print("Checking OpenFGA connection...")
-    fga_healthy = await authz_service.check_fga_health()
+    fga_healthy = authz_service.check_fga_health()
     if fga_healthy:
         print("OpenFGA connection established successfully!")
     else:
@@ -90,7 +90,7 @@ async def read_root():
 @app.get("/health")
 async def health_check():
     """Health check endpoint including OpenFGA status."""
-    fga_healthy = await authz_service.check_fga_health()
+    fga_healthy = authz_service.check_fga_health()
     return {
         "status": "healthy",
         "version": settings.app_version,

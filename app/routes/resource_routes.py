@@ -29,7 +29,7 @@ async def list_resources(
 
     accessible_resources = []
     for resource in all_resources:
-        if await authz_service.check_permission_on_resource(
+        if authz_service.check_permission_on_resource(
             user_id, "can_view_resource", resource.id
         ):
             accessible_resources.append(
@@ -53,7 +53,7 @@ async def get_resource(
     db: AsyncSession = Depends(get_db),
 ):
     """Get a specific resource."""
-    if not await authz_service.check_permission_on_resource(
+    if not authz_service.check_permission_on_resource(
         user_id, "can_view_resource", resource_id
     ):
         raise HTTPException(status_code=403, detail="Access denied")
@@ -81,7 +81,7 @@ async def create_resource(
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new resource (admin or member of organization)."""
-    if not await authz_service.check_permission_on_org(
+    if not authz_service.check_permission_on_org(
         user_id, "can_add_resource", resource.organization_id
     ):
         raise HTTPException(
@@ -105,7 +105,7 @@ async def create_resource(
     await db.refresh(resource_db)
 
     # Link resource to organization in OpenFGA
-    await authz_service.assign_resource_to_organization(
+    authz_service.assign_resource_to_organization(
         resource_id, resource.organization_id
     )
 
@@ -126,7 +126,7 @@ async def delete_resource(
     db: AsyncSession = Depends(get_db),
 ):
     """Delete a resource (admin only)."""
-    if not await authz_service.check_permission_on_resource(
+    if not authz_service.check_permission_on_resource(
         user_id, "can_delete_resource", resource_id
     ):
         raise HTTPException(status_code=403, detail="Admin access required")
@@ -157,10 +157,10 @@ async def check_resource_permissions(
         raise HTTPException(status_code=404, detail="Resource not found")
 
     permissions = {
-        "can_view": await authz_service.check_permission_on_resource(
+        "can_view": authz_service.check_permission_on_resource(
             user_id, "can_view_resource", resource_id
         ),
-        "can_delete": await authz_service.check_permission_on_resource(
+        "can_delete": authz_service.check_permission_on_resource(
             user_id, "can_delete_resource", resource_id
         ),
     }

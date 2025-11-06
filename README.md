@@ -26,7 +26,7 @@ Each of the examples in this directory can be run directly from the command line
 This example demonstrates how to chain "activity" tasks together in a workflow. You can run this sample using the following command:
 
 ```sh
-dapr run --app-id user_onboarding_workflow --dapr-grpc-port 50001 --dapr-http-port 3500 --resources-path ./resources -- python3 user_onboarding.py
+dapr run --app-id user_onboarding_workflow --dapr-grpc-port 50001 --dapr-http-port 3500 --app-port 6005 --resources-path ./resources -- python3 user_onboarding.py
 ```
 
 The output of this example should look like this:

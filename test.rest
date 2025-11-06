@@ -17,7 +17,12 @@ Content-Type: application/json
 POST {{daprHost}}/v1.0/workflows/dapr/user_onboarding_workflow/start
 Content-Type: application/json
 
-@instanceId={{startWorkflowRequest.response.body.instance_id}}
+[{
+  "w_input": "{{ user_id }}"
+}]
+
+### Get the workflow status
+@instanceId={{startWorkflowRequest.response.body.instanceID}}
 ### Get the workflow status
 GET {{ daprHost }}/v1.0/workflows/dapr/{{ instanceId }}
 

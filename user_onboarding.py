@@ -11,7 +11,9 @@
 # limitations under the License.
 
 from datetime import datetime, timedelta
-from time import sleep
+import os
+import logging
+import uvicorn
 
 from dapr.clients import DaprClient
 from dapr.conf import settings
@@ -25,6 +27,16 @@ from dapr.ext.workflow import (
 )
 
 wfr = WorkflowRuntime()
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger('Workflows')
+
+async def app(scope, receive, send):
+    assert scope["type"] == "http"
+    # Simple health response for any request
+    body = b"healthy"
+    headers = [(b"content-type", b"text/plain"), (b"content-length", str(len(body)).encode())]
+    await send({"type": "http.response.start", "status": 200, "headers": headers})
+    await send({"type": "http.response.body", "body": body})
 
 retry_policy = RetryPolicy(
     first_retry_interval=timedelta(seconds=1),
@@ -36,16 +48,16 @@ retry_policy = RetryPolicy(
 
 @wfr.workflow(name='user_onboarding_workflow')
 def user_onboarding_workflow(ctx: DaprWorkflowContext, wf_input: int):
-    print(f'User onboarding workflow started with workflow id: {ctx.instance_id} and input {wf_input}')
+    logger.info(f'User onboarding workflow started with workflow id: {ctx.instance_id} and input {wf_input}')
     try:
         result1 = yield ctx.call_activity(get_user_permissions, input=wf_input)
-        print(f'Result 1: {result1}')
+        logger.info(f'Result 1: {result1}')
         ctx.set_custom_status("User permissions retrieved")
 
         # For admin users wait for manual approval of permissions grant
         result2 = None
         if result1 == "admin":
-            print(f'inside admin')
+            logger.info(f'inside admin')
             yield ctx.call_activity(notify_approver, input=wf_input)
             approved_event = ctx.wait_for_external_event('permissions_approved')
             denied_event = ctx.wait_for_external_event('permissions_denied')
@@ -58,11 +70,11 @@ def user_onboarding_workflow(ctx: DaprWorkflowContext, wf_input: int):
                 result2 = 'Denied'
                 ctx.set_custom_status("Admin permissions denied or timed out")
                 return [result2]
-            print(f'Admin permissions have been: {result2} for user id:{wf_input}')
+            logger.info(f'Admin permissions have been: {result2} for user id:{wf_input}')
         
-        print(f'Granting permissions for user id {wf_input}')
+        logger.info(f'Granting permissions for user id {wf_input}')
         result3 = yield ctx.call_activity(grant_permissions, input={'role': result1, 'user_id': wf_input})
-        print(f'after result3')
+        logger.info(f'after result3')
         
     except Exception as e:
         yield ctx.call_activity(error_handler, input=str(e))
@@ -72,7 +84,7 @@ def user_onboarding_workflow(ctx: DaprWorkflowContext, wf_input: int):
 
 @wfr.activity(name='get_user_permissions')
 def get_user_permissions(ctx, activity_input):
-    print(f'Getting user permissions for workflow id: {activity_input}')
+    logger.info(f'Getting user permissions for workflow id: {activity_input}')
     # Go get the state from the state store, for user id
     dapr_client = DaprClient()
     user_permissions = ""
@@ -87,19 +99,19 @@ def get_user_permissions(ctx, activity_input):
             data = None
         return data
     except Exception as e:
-        print(f'Error getting user permissions: {e}')
+        logger.info(f'Error getting user permissions: {e}')
         return None
 
 @wfr.activity(name='notify_approver')
 def notify_approver(ctx, activity_input):
-    print(f'Notifying approver to approve admin permissions. User id: {activity_input}')
+    logger.info(f'Notifying approver to approve admin permissions. User id: {activity_input}')
     # TODO maybe have a ui here to approve?
 
 @wfr.activity(name='grant_permissions')
 def grant_permissions(ctx, activity_input):
     role = activity_input['role']
     user_id = activity_input['user_id']
-    print(f'Granting {role} permissions for user id {user_id}')
+    logger.info(f'Granting {role} permissions for user id {user_id}')
     # Grant permissions in the openfga server
     # PUT OPEN FGA SERVICE CALL HERE
     return f'Permissions granted for user {user_id} with role {role}'
@@ -107,22 +119,15 @@ def grant_permissions(ctx, activity_input):
 
 @wfr.activity
 def error_handler(ctx, error):
-    print(f'Executing error handler: {error}.')
+    logger.info(f'Executing error handler: {error}.')
     # Rollback permissions in the openfga server
 
-if __name__ == '__main__':
+def main():
     wfr.start()
-    sleep(10)  # wait for workflow runtime to start
+    app_port = int(os.getenv('APP_PORT', 6005))
+    logger.info(f"Starting FastAPI server on port {app_port}")
+    uvicorn.run(app, host='0.0.0.0', port=app_port, log_level='info')
 
-    wf_client = DaprWorkflowClient()
-    user_id = 1
-    instance_id = wf_client.schedule_new_workflow(workflow=user_onboarding_workflow, input=user_id)
-    print(f'Workflow started. Instance ID: {instance_id}')
-    state = wf_client.wait_for_workflow_completion(instance_id)
-    print(f'Workflow completed! Status: {state.runtime_status}')
-
-    sleep(100)  # wait for workflow to complete
-
-    wfr.shutdown()
-
+if __name__ == '__main__':
+    main()
 

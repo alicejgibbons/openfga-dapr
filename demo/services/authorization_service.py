@@ -8,8 +8,13 @@ from openfga_sdk.client.models import (
     ClientTuple,
     ClientWriteResponse,
 )
+from openfga_sdk.client.models.write_conflict_opts import (
+    ClientWriteRequestOnDuplicateWrites,
+    ClientWriteRequestOnMissingDeletes,
+    ConflictOptions,
+)
 from openfga_sdk.models import CheckResponse, ListObjectsResponse
-from app.config import settings
+from ..config import settings
 
 ROLES = ["admin", "member"]
 
@@ -29,7 +34,9 @@ class AuthorizationService:
         self.client = OpenFgaClient(configuration)
 
     # Core OpenFGA operations
-    def _check_permission(self, user: str, relation: str, object_id: str) -> CheckResponse:
+    def _check_permission(
+        self, user: str, relation: str, object_id: str
+    ) -> CheckResponse:
         """Check if a user has a specific relation to an object."""
         return self.client.check(
             ClientCheckRequest(user=user, relation=relation, object=object_id)
@@ -39,22 +46,34 @@ class AuthorizationService:
         """Write relationship tuples to OpenFGA."""
         logger.debug(f"Writing {len(tuples)} tuples to OpenFGA")
         write_request = ClientWriteRequest(writes=tuples)
-        return self.client.write(write_request)
+        options = {
+            "conflict": ConflictOptions(
+                on_duplicate_writes=ClientWriteRequestOnDuplicateWrites.IGNORE,
+                on_missing_deletes=ClientWriteRequestOnMissingDeletes.IGNORE,
+            )
+        }
+        return self.client.write(write_request, options)
 
     def _delete_tuples(self, tuples: list[ClientTuple]) -> ClientWriteResponse:
         """Delete relationship tuples from OpenFGA."""
         logger.debug(f"Deleting {len(tuples)} tuples from OpenFGA")
         write_request = ClientWriteRequest(deletes=tuples)
-        return self.client.write(write_request)
+        options = {
+            "conflict": ConflictOptions(
+                on_duplicate_writes=ClientWriteRequestOnDuplicateWrites.IGNORE,
+                on_missing_deletes=ClientWriteRequestOnMissingDeletes.IGNORE,
+            )
+        }
+        return self.client.write(write_request, options)
 
-    def _list_objects(self, user: str, relation: str, object_type: str) -> ListObjectsResponse:
+    def _list_objects(
+        self, user: str, relation: str, object_type: str
+    ) -> ListObjectsResponse:
         """List all objects of a given type that a user has a specific relation to."""
         logger.debug(
             f"Listing objects: user={user}, relation={relation}, type={object_type}"
         )
-        return self.client.list_objects(
-            user=user, relation=relation, type=object_type
-        )
+        return self.client.list_objects(user=user, relation=relation, type=object_type)
 
     # Business logic methods
     def assign_user_to_organization(
@@ -108,9 +127,7 @@ class AuthorizationService:
         )
         return response.allowed if response else False
 
-    def check_permission_on_org(
-        self, user_id: str, action: str, org_id: str
-    ) -> bool:
+    def check_permission_on_org(self, user_id: str, action: str, org_id: str) -> bool:
         """Check if user is allowed to perform an action on an organization."""
         response = self._check_permission(
             user=f"user:{user_id}", relation=action, object_id=f"organization:{org_id}"
@@ -126,8 +143,16 @@ class AuthorizationService:
             user=f"user:{user_id}", relation="member", object_type="organization"
         )
 
-        admin_orgs = admin_response.objects if admin_response and hasattr(admin_response, "objects") else []
-        member_orgs = member_response.objects if member_response and hasattr(member_response, "objects") else []
+        admin_orgs = (
+            admin_response.objects
+            if admin_response and hasattr(admin_response, "objects")
+            else []
+        )
+        member_orgs = (
+            member_response.objects
+            if member_response and hasattr(member_response, "objects")
+            else []
+        )
 
         # Remove duplicates and organization: prefix
         all_orgs = list(set(admin_orgs + member_orgs))
@@ -138,18 +163,11 @@ class AuthorizationService:
         response = self._list_objects(
             user=f"user:{user_id}", relation="can_view_resource", object_type="resource"
         )
-        resources = response.objects if response and hasattr(response, "objects") else []
+        resources = (
+            response.objects if response and hasattr(response, "objects") else []
+        )
         # Remove resource: prefix
         return [res.replace("resource:", "") for res in resources]
-
-    def check_fga_health(self) -> bool:
-        """Check if OpenFGA service is healthy."""
-        try:
-            self.client.read_authorization_models()
-            return True
-        except Exception as e:
-            logger.error(f"OpenFGA health check failed: {e}")
-            return False
 
 
 # Global authorization service instance

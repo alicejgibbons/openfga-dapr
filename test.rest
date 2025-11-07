@@ -42,6 +42,8 @@ Content-Type: application/json
 
 {
   "user_id": "alice",
+  "name": "readme.md",
+  "resource_type": "file",
   "organization_id": "acme"
 }
 

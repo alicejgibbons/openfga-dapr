@@ -33,3 +33,19 @@ Content-Type: application/json
 #### Grant permissions denied event
 POST {{daprHost}}/v1.0/workflows/dapr/{{ instanceId }}/raiseEvent/permissions_denied
 Content-Type: application/json
+
+
+### Create Resource
+# @name startCreateResourceWorkflow
+POST {{daprHost}}/v1.0/workflows/dapr/create_resource_workflow/start
+Content-Type: application/json
+
+{
+  "user_id": "alice",
+  "organization_id": "acme"
+}
+
+### Get the workflow status
+@instanceId={{startCreateResourceWorkflow.response.body.instanceID}}
+### Get the workflow status
+GET {{ daprHost }}/v1.0/workflows/dapr/{{ instanceId }}

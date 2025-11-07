@@ -1,0 +1,53 @@
+@baseUrl = http://localhost:8000
+
+### OpenFGA Read: Organizations where alice is admin
+POST {{$dotenv OPENFGA_API_URL}}/stores/{{$dotenv OPENFGA_STORE_ID}}/read
+Content-Type: application/json
+
+{
+  "tuple_key": {
+    "user": "user:alice",
+    "relation": "admin",
+    "object": "organization:"
+  }
+}
+
+### OpenFGA ListObjects: All resources a user can view
+POST {{$dotenv OPENFGA_API_URL}}/stores/{{$dotenv OPENFGA_STORE_ID}}/list-objects
+Content-Type: application/json
+
+{
+  "type": "resource",
+  "relation": "can_view_resource",
+  "user": "user:alice"
+}
+
+### OpenFGA ListObjects: Admins for an organization
+POST {{$dotenv OPENFGA_API_URL}}/stores/{{$dotenv OPENFGA_STORE_ID}}/list-objects
+Content-Type: application/json
+
+{
+  "type": "organization",
+  "relation": "admin",
+  "user": "organization:acme"
+}
+
+### OpenFGA ListObjects: Members for an organization
+POST {{$dotenv OPENFGA_API_URL}}/stores/{{$dotenv OPENFGA_STORE_ID}}/list-objects
+Content-Type: application/json
+
+{
+  "type": "organization",
+  "relation": "member",
+  "user": "organization:acme"
+}
+
+### OpenFGA ListObjects: Resources for an organization
+POST {{$dotenv OPENFGA_API_URL}}/stores/{{$dotenv OPENFGA_STORE_ID}}/list-objects
+Content-Type: application/json
+
+{
+  "type": "resource",
+  "relation": "organization",
+  "user": "organization:acme"
+}

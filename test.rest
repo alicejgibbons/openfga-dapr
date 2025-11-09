@@ -1,28 +1,22 @@
 # Requires the REST Client Extension in VSCode/Cursor: humao.rest-client
 @apphost=http://localhost:5255
 @daprHost=http://localhost:3500
-@user_id=1
+@user_id=alice
 
-### Set user permissions
-POST {{ daprHost }}/v1.0/state/statestore
+### Create Resource
+# @name startCreateResourceWorkflow
+POST {{daprHost}}/v1.0/workflows/dapr/create_resource_workflow/start
 Content-Type: application/json
 
-[{
-  "key": "{{ user_id }}",
-  "value": "admin"
-}]
-
-### Start the user onboarding workflow
-# @name startWorkflowRequest
-POST {{daprHost}}/v1.0/workflows/dapr/user_onboarding_workflow/start
-Content-Type: application/json
-
-[{
-  "w_input": "{{ user_id }}"
-}]
+{
+  "user_id": "{{ user_id }}",
+  "name": "readme.md",
+  "resource_type": "file",
+  "organization_id": "acme"
+}
 
 ### Get the workflow status
-@instanceId={{startWorkflowRequest.response.body.instanceID}}
+@instanceId={{startCreateResourceWorkflow.response.body.instanceID}}
 ### Get the workflow status
 GET {{ daprHost }}/v1.0/workflows/dapr/{{ instanceId }}
 
@@ -35,19 +29,4 @@ POST {{daprHost}}/v1.0/workflows/dapr/{{ instanceId }}/raiseEvent/permissions_de
 Content-Type: application/json
 
 
-### Create Resource
-# @name startCreateResourceWorkflow
-POST {{daprHost}}/v1.0/workflows/dapr/create_resource_workflow/start
-Content-Type: application/json
 
-{
-  "user_id": "alice",
-  "name": "readme.md",
-  "resource_type": "file",
-  "organization_id": "acme"
-}
-
-### Get the workflow status
-@instanceId={{startCreateResourceWorkflow.response.body.instanceID}}
-### Get the workflow status
-GET {{ daprHost }}/v1.0/workflows/dapr/{{ instanceId }}

@@ -4,19 +4,19 @@
 @user_id=alice
 
 ### Create Resource
-# @name startCreateResourceWorkflow
-POST {{daprHost}}/v1.0/workflows/dapr/create_resource_workflow/start
+# @name startCreateTeamMemberWorkflow
+POST {{daprHost}}/v1.0/workflows/dapr/create_team_member_workflow/start
 Content-Type: application/json
 
 {
-  "user_id": "{{ user_id }}",
-  "name": "readme.md",
-  "resource_type": "file",
+  "actor_id": "alice",
+  "user_id": "charlie",
+  "role": "member",
   "organization_id": "acme"
 }
 
 ### Get the workflow status
-@instanceId={{startCreateResourceWorkflow.response.body.instanceID}}
+@instanceId={{startCreateTeamMemberWorkflow.response.body.instanceID}}
 ### Get the workflow status
 GET {{ daprHost }}/v1.0/workflows/dapr/{{ instanceId }}
 
@@ -27,6 +27,4 @@ Content-Type: application/json
 #### Grant permissions denied event
 POST {{daprHost}}/v1.0/workflows/dapr/{{ instanceId }}/raiseEvent/permissions_denied
 Content-Type: application/json
-
-
 

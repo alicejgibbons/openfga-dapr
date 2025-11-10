@@ -22,11 +22,18 @@ class Organization(Base):
     id = Column(String, primary_key=True, index=True)
 
 
+class TeamMember(Base):
+    __tablename__ = "team_members"
+
+    id = Column(String, primary_key=True, index=True)
+    organization_id = Column(String, nullable=False, index=True)
+    role = Column(String, nullable=False, default="member")
+
+
 class Resource(Base):
     __tablename__ = "resources"
 
     id = Column(String, primary_key=True, index=True)
-    name = Column(String, nullable=False, index=True)
     resource_type = Column(String, nullable=False)
     organization_id = Column(String, nullable=False, index=True)
 
@@ -36,14 +43,13 @@ def init_db():
     Base.metadata.create_all(engine)
 
     with Session() as session:
-        existing_org_query = session.execute(
-            select(Organization).where(Organization.id == "acme")
+        session.merge(Organization(id="acme"))
+        session.merge(TeamMember(id="alice", organization_id="acme", role="admin"))
+        session.merge(TeamMember(id="bob", organization_id="acme", role="member"))
+        session.merge(
+            Resource(id="report.pdf", resource_type="file", organization_id="acme")
         )
-        existing_org = existing_org_query.scalars().first()
-
-        if not existing_org:
-            session.add(Organization(id="acme"))
 
     authz_service.assign_user_to_organization("alice", "acme", "admin")
-
     authz_service.assign_user_to_organization("bob", "acme", "member")
+    authz_service.assign_resource_to_organization("report.pdf", "acme")

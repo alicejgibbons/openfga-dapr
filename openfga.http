@@ -1,17 +1,5 @@
 @baseUrl = http://localhost:8080
 
-### OpenFGA Read: Organizations where alice is admin
-POST {{$dotenv OPENFGA_API_URL}}/stores/{{$dotenv OPENFGA_STORE_ID}}/read
-Content-Type: application/json
-
-{
-  "tuple_key": {
-    "user": "user:alice",
-    "relation": "admin",
-    "object": "organization:"
-  }
-}
-
 ### OpenFGA ListObjects: All resources a user can view
 POST {{$dotenv OPENFGA_API_URL}}/stores/{{$dotenv OPENFGA_STORE_ID}}/list-objects
 Content-Type: application/json
@@ -19,35 +7,44 @@ Content-Type: application/json
 {
   "type": "resource",
   "relation": "can_view_resource",
-  "user": "user:alice"
+  "user": "user:bob"
 }
 
-### OpenFGA ListObjects: Admins for an organization
+### OpenFGA ListObjects: Organizations where a user is admin
 POST {{$dotenv OPENFGA_API_URL}}/stores/{{$dotenv OPENFGA_STORE_ID}}/list-objects
 Content-Type: application/json
 
 {
   "type": "organization",
   "relation": "admin",
-  "user": "organization:acme"
+  "user": "user:alice"
 }
 
-### OpenFGA ListObjects: Members for an organization
-POST {{$dotenv OPENFGA_API_URL}}/stores/{{$dotenv OPENFGA_STORE_ID}}/list-objects
+### OpenFGA ListUsers: Users who can add resources to an organization
+POST {{$dotenv OPENFGA_API_URL}}/stores/{{$dotenv OPENFGA_STORE_ID}}/list-users
 Content-Type: application/json
 
 {
-  "type": "organization",
-  "relation": "member",
-  "user": "organization:acme"
+  "object": {
+    "type": "organization",
+    "id": "acme"
+  },
+  "relation": "can_add_resource",
+  "user_filters": [
+    {
+      "type": "user"
+    }
+  ]
 }
 
-### OpenFGA ListObjects: Resources for an organization
-POST {{$dotenv OPENFGA_API_URL}}/stores/{{$dotenv OPENFGA_STORE_ID}}/list-objects
+### OpenFGA Check: Can a user add a member to an organization?
+POST {{$dotenv OPENFGA_API_URL}}/stores/{{$dotenv OPENFGA_STORE_ID}}/check
 Content-Type: application/json
 
 {
-  "type": "resource",
-  "relation": "organization",
-  "user": "organization:acme"
+  "tuple_key": {
+    "object": "organization:acme",
+    "relation": "can_add_member",
+    "user": "user:alice"
+  }
 }

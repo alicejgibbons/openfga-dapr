@@ -34,7 +34,6 @@ logger = logging.getLogger("workflows")
 @dataclass
 class TeamMemberRequest:
     """Team member request object containing openfga request properties"""
-
     actor_id: str
     user_id: str
     organization_id: str
@@ -52,8 +51,8 @@ retry_policy = RetryPolicy(
 )
 
 
-@wfr.workflow(name="create_team_member_workflow")
-def create_team_member_workflow(ctx: DaprWorkflowContext, wf_input: dict):
+@wfr.workflow(name="grant_organization_membership_workflow")
+def grant_organization_membership_workflow(ctx: DaprWorkflowContext, wf_input: dict):
     req = TeamMemberRequest(
         actor_id=wf_input.get("actor_id"),
         user_id=wf_input.get("user_id"),
@@ -62,7 +61,7 @@ def create_team_member_workflow(ctx: DaprWorkflowContext, wf_input: dict):
     )
 
     logger.info(
-        f"Starting create team member workflow for access request for user: {req.user_id} on org: {req.organization_id}"
+        f"Grant organization membership workflow for team member: {req.user_id} from user: {req.actor_id}"
     )
     try:
         allowed = yield ctx.call_activity(
@@ -74,9 +73,8 @@ def create_team_member_workflow(ctx: DaprWorkflowContext, wf_input: dict):
             },
         )
 
-        if not allowed:  # in this case we should have a manual permission check
-            ctx.set_custom_status("Insufficient user permissions on organization")
-            logger.info(f"perms not allowed")
+        if not allowed:
+            ctx.set_custom_status("Insufficient requester user permissions to add team member in organization")
             yield ctx.call_activity(approver_manual_override, input=req.user_id)
             approved_event = ctx.wait_for_external_event("manual_override_approved")
             timeout_event = ctx.create_timer(timedelta(hours=24))
@@ -84,18 +82,17 @@ def create_team_member_workflow(ctx: DaprWorkflowContext, wf_input: dict):
             if winner == approved_event:
                 allowed = True
                 logger.info(
-                    f"Admin permissions have been approved for user id:{wf_input}"
+                    f"Manual override: approved adding team member to organization with user id:{req.user_id}"
                 )
                 ctx.set_custom_status(
-                    "Manual override - approved user permissions on organization"
+                    "Manual override: approved adding team member to organization"
                 )
             else:
                 raise Exception(
-                    "User has insufficient permissions to add resource in organization"
+                    "Requesting user has insufficient permissions to add team member in organization"
                 )
 
-        logger.info(f"User permission check passed: {allowed}")
-        ctx.set_custom_status("User permissions confirmed")
+        ctx.set_custom_status("Requster user permission check passed")
 
         team_member = yield ctx.call_activity(
             create_team_member,
@@ -106,9 +103,7 @@ def create_team_member_workflow(ctx: DaprWorkflowContext, wf_input: dict):
             },
         )
         req.created = True
-
-        logger.info(f"Team member created successfully: {team_member}")
-        ctx.set_custom_status(f"Resource {team_member} created successfully")
+        ctx.set_custom_status(f"Team member {team_member} created successfully")
         ## ideally workflow would fail here to showcase dual write problem
 
         # if True:
@@ -124,12 +119,12 @@ def create_team_member_workflow(ctx: DaprWorkflowContext, wf_input: dict):
             },
         )
 
-        logger.info(f"Team member assigned to organization: {assigned}")
         ctx.set_custom_status(f"Team member assigned to organization: {assigned}")
         req.granted = assigned
+
     except Exception as e:
         logger.error(
-            f"Error in create team member workflow for user_id={req.user_id}, organization_id={req.organization_id}: {e}"
+            f"Error in grant organization membership workflow for user_id={req.user_id}, organization_id={req.organization_id}: {e}"
         )
         ctx.set_custom_status(f"Error occurred: {e}")
         yield ctx.call_activity(
@@ -148,8 +143,26 @@ def create_team_member_workflow(ctx: DaprWorkflowContext, wf_input: dict):
 
     return req.granted
 
+@wfr.activity(name="check_permission_on_org")
+def check_permission_on_org(ctx: DaprWorkflowContext, input: dict):
+    user_id = input.get("user_id")
+    organization_id = input.get("organization_id")
+    relation = input.get("relation")
+    logger.info(
+        f"Checking permission on org for user_id={user_id}, organization_id={organization_id}"
+    )
+    allowed = authz_service.check_permission_on_org(user_id, relation, organization_id)
+    logger.info(f"Requster user permission check passed: {allowed}")
+    return allowed
 
-@wfr.activity(name="create_resource")
+
+@wfr.activity(name="approver_manual_override")
+def approver_manual_override(ctx, input):
+    logger.info(
+        f"Notifying manual approver to override adding user to organization with user id: {input}"
+    )
+
+@wfr.activity(name="create_team_member")
 def create_team_member(ctx: DaprWorkflowContext, input: dict):
     user_id = input.get("user_id")
     organization_id = input.get("organization_id")
@@ -166,6 +179,7 @@ def create_team_member(ctx: DaprWorkflowContext, input: dict):
         )
 
         session.merge(team_member)
+        logger.info(f"Team member created successfully: {team_member}")
 
         # Return the created team member
         return {"id": team_member.id}
@@ -177,37 +191,9 @@ def assign_user_to_organization(ctx: DaprWorkflowContext, input: dict):
     organization_id = input.get("organization_id")
     role = input.get("role")
 
-    return authz_service.assign_user_to_organization(user_id, organization_id, role)
-
-
-@wfr.activity(name="remove_user_from_organization")
-def remove_user_from_organization(ctx: DaprWorkflowContext, input: dict):
-    user_id = input.get("user_id")
-    organization_id = input.get("organization_id")
-    role = input.get("role")
-
-    return authz_service.remove_user_from_organization(user_id, organization_id, role)
-
-
-@wfr.activity(name="check_permission_on_org")
-def check_permission_on_org(ctx: DaprWorkflowContext, input: dict):
-    user_id = input.get("user_id")
-    organization_id = input.get("organization_id")
-    relation = input.get("relation")
-    logger.info(
-        f"Checked permission on org for user_id={user_id}, organization_id={organization_id}"
-    )
-
-    return authz_service.check_permission_on_org(user_id, relation, organization_id)
-
-
-@wfr.activity(name="approver_manual_override")
-def approver_manual_override(ctx, input):
-    logger.info(
-        f"Notifying approver to manual override permissions denial. User id: {input}"
-    )
-    # TODO maybe have a ui here to approve?
-
+    assigned = authz_service.assign_user_to_organization(user_id, organization_id, role)
+    logger.info(f"Team member assigned to organization: {assigned}")
+    return assigned
 
 @wfr.activity(name="error_handler")
 def error_handler(ctx: DaprWorkflowContext, input: dict):
@@ -225,14 +211,6 @@ def error_handler(ctx: DaprWorkflowContext, input: dict):
         )
 
         authz_service.remove_user_from_organization(user_id, organization_id, role)
-        # yield ctx.call_activity(
-        #     remove_user_from_organization,
-        #     input={
-        #         "user_id": user_id,
-        #         "organization_id": organization_id,
-        #         "role": role,
-        #     },
-        # )
 
     if created:
         logger.info(

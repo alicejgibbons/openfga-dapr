@@ -5,7 +5,7 @@
 
 ### Create Resource
 # @name startCreateTeamMemberWorkflow
-POST {{daprHost}}/v1.0/workflows/dapr/create_team_member_workflow/start
+POST {{daprHost}}/v1.0/workflows/dapr/grant_organization_membership_workflow/start
 Content-Type: application/json
 
 {
@@ -21,10 +21,6 @@ Content-Type: application/json
 GET {{ daprHost }}/v1.0/workflows/dapr/{{ instanceId }}
 
 ### Grant permissions approved event
-POST {{daprHost}}/v1.0/workflows/dapr/{{ instanceId }}/raiseEvent/permissions_approved
-Content-Type: application/json
-
-#### Grant permissions denied event
-POST {{daprHost}}/v1.0/workflows/dapr/{{ instanceId }}/raiseEvent/permissions_denied
+POST {{daprHost}}/v1.0/workflows/dapr/{{ instanceId }}/raiseEvent/manual_override_approved
 Content-Type: application/json
 

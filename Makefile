@@ -1,4 +1,4 @@
-.PHONY: help start-openfga stop-openfga status-openfga logs-openfga import-openfga-store
+.PHONY: help start-openfga stop-openfga import-openfga-store
 
 OPENFGA_API_URL ?= http://localhost:8080
 OPENFGA_STORE_FILE ?= ./demo/fga/store.fga.yaml
@@ -12,31 +12,14 @@ help: ## Show this help message
 
 start-openfga: ## Start OpenFGA in Docker
 	@echo "Starting OpenFGA..."
-	@docker run -d \
-		--name openfga \
-		-p 8080:8080 \
-		-p 8081:8081 \
-		-p 3000:3000 \
-		openfga/openfga:latest \
-		run
+	docker compose up -d
 	@echo "OpenFGA started on:"
 	@echo "  - HTTP API: http://localhost:8080"
 	@echo "  - gRPC API: localhost:8081"
 	@echo "  - Playground: http://localhost:3000"
 
 stop-openfga: ## Stop and remove OpenFGA container
-	@echo "Stopping OpenFGA..."
-	@docker stop openfga 2>/dev/null || true
-	@docker rm openfga 2>/dev/null || true
-	@echo "OpenFGA stopped"
-
-restart-openfga: stop-openfga start-openfga ## Restart OpenFGA
-
-status-openfga: ## Check OpenFGA container status
-	@docker ps -a --filter name=openfga --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-
-logs-openfga: ## Show OpenFGA logs
-	@docker logs -f openfga
+	docker compose down -v
 
 import-openfga-store: ## Import OpenFGA store and update env file
 	@echo "Importing OpenFGA store..."

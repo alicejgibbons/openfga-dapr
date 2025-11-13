@@ -43,13 +43,14 @@ def init_db():
     Base.metadata.create_all(engine)
 
     with Session() as session:
-        session.merge(Organization(id="acme"))
-        session.merge(TeamMember(id="alice", organization_id="acme", role="admin"))
-        session.merge(TeamMember(id="bob", organization_id="acme", role="member"))
+        session.merge(Organization(id="kubecon"))
+        session.merge(TeamMember(id="alice", organization_id="kubecon", role="admin"))
+        session.merge(TeamMember(id="bob", organization_id="kubecon", role="member"))
         session.merge(
-            Resource(id="report.pdf", resource_type="file", organization_id="acme")
+            Resource(id="report.pdf", resource_type="file", organization_id="kubecon")
         )
+        session.commit()
 
-    authz_service.assign_user_to_organization("alice", "acme", "admin")
-    authz_service.assign_user_to_organization("bob", "acme", "member")
-    authz_service.assign_resource_to_organization("report.pdf", "acme")
+    authz_service.assign_user_to_organization("alice", "kubecon", "admin")
+    authz_service.assign_user_to_organization("bob", "kubecon", "member")
+    authz_service.assign_resource_to_organization("report.pdf", "kubecon")

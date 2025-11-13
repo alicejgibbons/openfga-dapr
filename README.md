@@ -4,7 +4,7 @@ This repository contains an example of using [Dapr Workflow](https://docs.dapr.i
 
 ## Prerequisites
 - [OpenFGA CLI](https://github.com/openfga/cli?tab=readme-ov-file#installation)
-- [Dapr CLI and initialized environment](https://docs.dapr.io/getting-started)
+- [Dapr CLI and initialized local environment](https://docs.dapr.io/getting-started)
 - [Install Python 3.9+](https://www.python.org/downloads/)
 - Note: This repo assumes a Unix/Linux machine.
 
@@ -39,19 +39,6 @@ Importing OpenFGA store...
   - Playground: http://localhost:3000/playground
 ```
 
-2. Import the OpenFGA schema into the PostgreSQL database.
-
-```
-import-openfga-store
-
-Importing OpenFGA store...
-
-✓ Store imported successfully!
-  Store ID: 01K9PVFK2DBQMCBCXYZHWTEM5B
-  Model ID: 01K9PVFK2Q46H0P7H805V6A5NG
-  Configuration saved to: .env
-```
-
 ### Install requirements
 
 Install Dapr SDK package using pip command:
@@ -62,9 +49,7 @@ pip3 install -r requirements.txt
 
 ## Run the Grant Organization Membership workflow
 
-Each of the examples in this directory can be run directly from the command line.
-
-This example demonstrates how to chain "activity" tasks together in a workflow. You can run this sample using the following command:
+1. Run the workflow and Dapr process using the following command:
 
 ```sh
 dapr run --app-id grant-organization-membership-workflow \
@@ -75,13 +60,51 @@ dapr run --app-id grant-organization-membership-workflow \
 ```
 
 This command:
-- starts the Dapr sidecar process using the `app-id` "organization-onboarding-workflow"
-- Starts the Dapr workflow application
+- starts the Dapr sidecar process using the `app-id` "grant-organization-membership-workflow"
+- Starts the Dapr workflow application using the [Redis component](resources/statestore.yaml) as the backing workflow statestore
+
+Along with the Dapr process logs, you will see the application logs output the following:
 
 ```
-== APP == Workflow started. Instance ID: b716208586c24829806b44b62816b598
-== APP == Step 1: Received input: 42.
-== APP == Step 2: Received input: 43.
-== APP == Step 3: Received input: 86.
-== APP == Workflow completed! Status: WorkflowStatus.COMPLETED
+== APP == 2025-11-13 10:39:06.772 WorkflowRuntime INFO: Registering workflow 'grant_organization_membership_workflow' with runtime
+== APP == INFO:WorkflowRuntime:Registering workflow 'grant_organization_membership_workflow' with runtime
+== APP == 2025-11-13 10:39:06.772 WorkflowRuntime INFO: Registering activity 'check_permission_on_org' with runtime
+== APP == INFO:WorkflowRuntime:Registering activity 'check_permission_on_org' with runtime
+== APP == 2025-11-13 10:39:06.772 WorkflowRuntime INFO: Registering activity 'approver_manual_override' with runtime
+== APP == INFO:WorkflowRuntime:Registering activity 'approver_manual_override' with runtime
+== APP == 2025-11-13 10:39:06.773 WorkflowRuntime INFO: Registering activity 'create_team_member' with runtime
+== APP == INFO:WorkflowRuntime:Registering activity 'create_team_member' with runtime
+== APP == 2025-11-13 10:39:06.773 WorkflowRuntime INFO: Registering activity 'assign_user_to_organization' with runtime
+== APP == INFO:WorkflowRuntime:Registering activity 'assign_user_to_organization' with runtime
+== APP == 2025-11-13 10:39:06.773 WorkflowRuntime INFO: Registering activity 'error_handler' with runtime
+== APP == INFO:WorkflowRuntime:Registering activity 'error_handler' with runtime
+== APP == 2025-11-13 10:39:06.773 durabletask-worker INFO: Starting gRPC worker that connects to dns:127.0.0.1:50001
+== APP == 2025-11-13 10:39:06.777 durabletask-worker INFO: Created fresh connection to dns:127.0.0.1:50001
+== APP == 2025-11-13 10:39:06.777 durabletask-worker INFO: Successfully connected to dns:127.0.0.1:50001. Waiting for work items...
 ```
+
+## Kick off a new workflow
+
+1. Use the VSCode Rest extension (or curl) and the [test.rest file](test.rest) file to start a new instance of the grant organization membership workflow.
+
+```
+POST {{daprHost}}/v1.0/workflows/dapr/grant_organization_membership_workflow/start
+Content-Type: application/json
+
+{
+  "actor_id": "alice",
+  "user_id": "charlie",
+  "role": "member",
+  "organization_id": "kubecon"
+}
+```
+
+2. View the sqlite local database and confirm that Alice is, in fact, an admin in the `kubecon` org. A similar workflow run with Bob as the `actor_id` will fail with insufficient permissions.
+
+| id | organization_id	| role |
+|---|--------|-----|
+| alice	| kubecon |	admin |
+| bob	| kubecon	| member |
+
+3. This workflow should complete successfully by adding Charlie to the sqlite and PostgreSQL OpenFGA authorization database. Use the `OpenFGA: ListUsers` and `Dapr Workflow: Get the workflow status` queries to confirm that the databases have been updated successfully. 
+

@@ -1,24 +1,40 @@
 # Requires the REST Client Extension in VSCode/Cursor: humao.rest-client
-@apphost=http://localhost:5255
 @daprHost=http://localhost:3500
-@user_id=alice
+@baseUrl = http://localhost:8080
 
-### Create Resource
-# @name startCreateTeamMemberWorkflow
+### Dapr Workflow: Grant Organization Membership Workflow
+# @name grant_organization_membership_workflow
 POST {{daprHost}}/v1.0/workflows/dapr/grant_organization_membership_workflow/start
 Content-Type: application/json
 
 {
   "actor_id": "alice",
-  "user_id": "charlie",
+  "user_id": "doug",
   "role": "member",
-  "organization_id": "acme"
+  "organization_id": "kubecon"
 }
 
-### Get the workflow status
-@instanceId={{startCreateTeamMemberWorkflow.response.body.instanceID}}
+### Dapr Workflow: Get the workflow status
+@instanceId={{grant_organization_membership_workflow.response.body.instanceID}}
 ### Get the workflow status
 GET {{ daprHost }}/v1.0/workflows/dapr/{{ instanceId }}
+
+### OpenFGA ListUsers: Users who can add resources to an organization
+POST {{$dotenv OPENFGA_API_URL}}/stores/{{$dotenv OPENFGA_STORE_ID}}/list-users
+Content-Type: application/json
+
+{
+  "object": {
+    "type": "organization",
+    "id": "kubecon"
+  },
+  "relation": "can_add_resource",
+  "user_filters": [
+    {
+      "type": "user"
+    }
+  ]
+}
 
 ### Grant permissions approved event
 POST {{daprHost}}/v1.0/workflows/dapr/{{ instanceId }}/raiseEvent/manual_override_approved

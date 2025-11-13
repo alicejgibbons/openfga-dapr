@@ -41,12 +41,11 @@ class TeamMemberRequest:
     created: bool = False
     granted: bool = False
 
-
 retry_policy = RetryPolicy(
     first_retry_interval=timedelta(seconds=1),
-    max_number_of_attempts=3,
-    backoff_coefficient=2,
-    max_retry_interval=timedelta(seconds=10),
+    max_number_of_attempts=10,
+    backoff_coefficient=1,
+    max_retry_interval=timedelta(seconds=4),
     retry_timeout=timedelta(seconds=100),
 )
 
@@ -71,13 +70,14 @@ def grant_organization_membership_workflow(ctx: DaprWorkflowContext, wf_input: d
                 "organization_id": req.organization_id,
                 "relation": "can_add_member",
             },
+            retry_policy=retry_policy,
         )
 
         if not allowed:
             ctx.set_custom_status("Insufficient requester user permissions to add team member in organization")
             yield ctx.call_activity(approver_manual_override, input=req.user_id)
             approved_event = ctx.wait_for_external_event("manual_override_approved")
-            timeout_event = ctx.create_timer(timedelta(hours=24))
+            timeout_event = ctx.create_timer(timedelta(seconds=20))
             winner = yield when_any([approved_event, timeout_event])
             if winner == approved_event:
                 allowed = True
@@ -106,9 +106,8 @@ def grant_organization_membership_workflow(ctx: DaprWorkflowContext, wf_input: d
         ctx.set_custom_status(f"Team member {team_member} created successfully")
         ## ideally workflow would fail here to showcase dual write problem
 
-        # if True:
-        #     sleep(1)
-        #     raise Exception("Simulated failure after team member creation")
+        if True:
+            sleep(5)
 
         assigned = yield ctx.call_activity(
             assign_user_to_organization,
@@ -117,6 +116,7 @@ def grant_organization_membership_workflow(ctx: DaprWorkflowContext, wf_input: d
                 "organization_id": req.organization_id,
                 "role": req.role,
             },
+            retry_policy=retry_policy,
         )
 
         ctx.set_custom_status(f"Team member assigned to organization: {assigned}")
@@ -138,7 +138,6 @@ def grant_organization_membership_workflow(ctx: DaprWorkflowContext, wf_input: d
                 "error": str(e),
             },
         )
-
         return req.granted
 
     return req.granted
@@ -171,7 +170,7 @@ def create_team_member(ctx: DaprWorkflowContext, input: dict):
     with Session() as session:
         logger.info(f"Creating team member for org: {user_id}")
 
-        # Create team member in database
+        # Create team member in local database
         team_member = TeamMember(
             id=user_id,
             organization_id=organization_id,
@@ -179,6 +178,7 @@ def create_team_member(ctx: DaprWorkflowContext, input: dict):
         )
 
         session.merge(team_member)
+        session.commit()
         logger.info(f"Team member created successfully: {team_member}")
 
         # Return the created team member
